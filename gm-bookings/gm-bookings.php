@@ -27,6 +27,9 @@ class GMBookings {
         add_action( 'init', array( &$this, 'create_van_taxonomy' ) );
         add_action( 'add_meta_boxes', array( &$this, 'create_meta_box' ) );
         add_action( 'save_post', array( &$this, 'save_meta_box' ) );
+		
+		add_filter("manage_edit-gm_bookings_columns", array(&$this, "edit_columns"));
+		add_action("manage_posts_custom_column", array(&$this, "custom_columns"));
     }
     
     public function create_van_taxonomy() {
@@ -90,6 +93,50 @@ class GMBookings {
 			)
 		);
 	}
+	
+	function edit_columns( $columns ) {
+		$columns = array(
+			"cb" => "<input type=\"checkbox\" />",
+			"gm_bookings_customer" => "Customer",
+			"gm_bookings_date" => "Date",
+			"gm_bookings_duration" => "Duration",
+			"gm_bookings_charge" => "Charge",
+			"gm_bookings_van" => "Van"
+			);
+
+		return $columns;
+	}
+
+	function custom_columns( $column ) {
+		global $post;
+		$custom = get_post_custom();
+		
+		switch ( $column ) {
+			case "gm_bookings_customer":
+				echo $custom['gm_bookings_first_name'][0] . ' ' . $custom['gm_bookings_last_name'][0];
+				break;
+			case "gm_bookings_date":
+				echo $custom["gm_bookings_start_date"][0];
+				break;
+			case "gm_bookings_duration":
+				$end_date = strtotime(str_replace('/', '-', $custom["gm_bookings_end_date"][0]));
+				$start_date = strtotime(str_replace('/', '-', $custom["gm_bookings_start_date"][0]));
+				$daycount = round(abs($end-$start)/60/60/24);
+				echo round(abs($end_date-$start_date)/60/60/24) . ' days';
+				break;
+			case "gm_bookings_charge":
+				echo '&pound;' . $custom["gm_bookings_charge"][0];
+				break;
+			case "gm_bookings_van":
+				$vans = get_the_terms(0, "gm_vans");
+				$vans_html = array();
+				foreach ($vans as $van)
+					array_push($vans_html, '<a href="' . get_term_link($van->slug, "gm_vans") . '">' . $van->name . '</a>');
+
+				echo implode($vans_html, ", ");
+				break;
+		}
+	}
     
 	public function create_meta_box() {
 		add_meta_box( 
@@ -104,18 +151,73 @@ class GMBookings {
 	public function meta_box_options() {
 		global $post;
 		wp_nonce_field( plugin_basename( __FILE__ ), 'gm_bookings_noncename' );
+		
+		echo '<div id="gm_booking_form">';
+		
+		// Customer details
+		echo '<h2>Customer details</h2>';
+		
+		echo '<p><label for="gm_bookings_first_name">First Name:</label>';
+		echo '<input type="text" id="gm_bookings_first_name" name="gm_bookings_first_name" value="' . get_post_meta($post->ID, 'gm_bookings_first_name', TRUE) . '" size="30" /></p>';
+		
+		echo '<p><label for="gm_bookings_last_name">Last Name:</label>';
+		echo '<input type="text" id="gm_bookings_last_name" name="gm_bookings_last_name" value="' . get_post_meta($post->ID, 'gm_bookings_last_name', TRUE) . '" size="30" /></p>';
+		
+		echo '<p><label for="gm_bookings_dob">Date of birth:</label>';
+		echo '<input type="text" id="gm_bookings_dob" name="gm_bookings_dob" value="' . get_post_meta($post->ID, 'gm_bookings_dob', TRUE) . '" size="20" /></p>';
+		
+		echo '<p><label for="gm_bookings_job">Occupation:</label>';
+		echo '<input type="text" id="gm_bookings_job" name="gm_bookings_job" value="' . get_post_meta($post->ID, 'gm_bookings_job', TRUE) . '" size="30" /></p>';
+		
+		// Address
+		echo '<h2>Customer address</h2>';
+		
+		echo '<p><label for="gm_bookings_addr">Address:</label><br/>';
+		echo '<textarea id="gm_bookings_addr" name="gm_bookings_addr" value="" cols="60" rows="7">' . get_post_meta($post->ID, 'gm_bookings_addr', TRUE) . '</textarea></p>';
+		
+		// Contact details
+		echo '<h2>Contact details</h2>';
+		
+		echo '<p><label for="gm_bookings_teld">Daytime telephone:</label>';
+		echo '<input type="text" id="gm_bookings_teld" name="gm_bookings_teld" value="' . get_post_meta($post->ID, 'gm_bookings_teld', TRUE) . '" size="20" /></p>';
+		
+		echo '<p><label for="gm_bookings_tele">Evening telephone:</label>';
+		echo '<input type="text" id="gm_bookings_tele" name="gm_bookings_tele" value="' . get_post_meta($post->ID, 'gm_bookings_tele', TRUE) . '" size="20" /></p>';
+		
+		echo '<p><label for="gm_bookings_mob">Mobile:</label>';
+		echo '<input type="text" id="gm_bookings_mob" name="gm_bookings_mob" value="' . get_post_meta($post->ID, 'gm_bookings_mob', TRUE) . '" size="20" /></p>';
+		
+		echo '<p><label for="gm_bookings_fax">Fax:</label>';
+		echo '<input type="text" id="gm_bookings_fax" name="gm_bookings_fax" value="' . get_post_meta($post->ID, 'gm_bookings_fax', TRUE) . '" size="20" /></p>';
+		
+		echo '<p><label for="gm_bookings_email">Email:</label>';
+		echo '<input type="text" id="gm_bookings_email" name="gm_bookings_email" value="' . get_post_meta($post->ID, 'gm_bookings_email', TRUE) . '" size="20" /></p>';
 
-		// Booking from
-		echo '<p><label for="gm_bookings_start_date">';
-		echo __( 'Booking from:' );
-		echo '</label> <br />';
+		// Hire details
+		echo '<h2>Hire details</h2>';
+		
+		echo '<p><label for="gm_bookings_charge">Charge (&pound;):</label>';
+		echo '<input type="text" id="gm_bookings_charge" name="gm_bookings_charge" value="' . get_post_meta($post->ID, 'gm_bookings_charge', TRUE) . '" size="10" /></p>';
+		
+		echo '<p><label for="gm_bookings_start_date">Hire start date:</label>';
 		echo '<input type="text" id="gm_bookings_start_date" name="gm_bookings_start_date" value="' . get_post_meta($post->ID, 'gm_bookings_start_date', TRUE) . '" size="20" /></p>';
-
-		// Booking to
-		echo '<p><label for="gm_bookings_end_date">';
-		echo __( 'Booking to:' );
-		echo '</label> <br />';
+		
+		echo '<p><label for="gm_bookings_end_date">Hire end date:</label>';
 		echo '<input type="text" id="gm_bookings_end_date" name="gm_bookings_end_date" value="' . get_post_meta($post->ID, 'gm_bookings_end_date', TRUE) . '" size="20" /></p>';
+		
+		echo '<p><label for="gm_bookings_num_adults">Number of adults:</label>';
+		echo '<input type="text" id="gm_bookings_num_adults" name="gm_bookings_num_adults" value="' . get_post_meta($post->ID, 'gm_bookings_num_adults', TRUE) . '" size="10" /></p>';
+		
+		echo '<p><label for="gm_bookings_num_child">Number of children:</label>';
+		echo '<input type="text" id="gm_bookings_num_child" name="gm_bookings_num_child" value="' . get_post_meta($post->ID, 'gm_bookings_num_child', TRUE) . '" size="10" /></p>';
+		
+		// Notes
+		echo '<h2>Notes</h2>';
+		
+		echo '<p><label for="gm_bookings_note">Any other information:</label><br/>';
+		echo '<textarea id="gm_bookings_note" name="gm_bookings_note" value="" cols="60" rows="7">' . get_post_meta($post->ID, 'gm_bookings_note', TRUE) . '</textarea></p>';
+		
+		echo '</div>';
 	}
     
 	public function save_meta_box() {
@@ -150,9 +252,16 @@ class GMBookings {
 	
 	public function add_stylesheets() {
 		global $post;
-		$styleFile = $this->plugin_dir . "/css/smoothness/jquery-ui-1.8.13.custom.css";
-
+		if( !is_object( $post ) ) return;
+		
+		$styleFile = $this->plugin_dir . "/css/gm-bookings.css";
 		if(file_exists($styleFile) && $post->post_type == 'gm_bookings'){
+			wp_register_style('gm-bookings-css', $this->plugin_url . "/css/gm-bookings.css");
+			wp_enqueue_style( 'gm-bookings-css');
+		}
+		
+		$pickerFile = $this->plugin_dir . "/css/smoothness/jquery-ui-1.8.13.custom.css";
+		if(file_exists($pickerFile) && $post->post_type == 'gm_bookings'){
 			wp_register_style('datepicker-css', $this->plugin_url . "/css/smoothness/jquery-ui-1.8.13.custom.css");
 			wp_enqueue_style( 'datepicker-css');
 		}
@@ -160,8 +269,9 @@ class GMBookings {
 	
 	public function add_js() {
 		global $post;
+		if( !is_object( $post ) ) return;
+		
 		$jsFile = $this->plugin_dir . "/js/jquery-ui-1.8.13.custom.min.js";
-
 		if(file_exists($jsFile) && $post->post_type == 'gm_bookings'){
 			wp_register_script('datepicker-js', $this->plugin_url . "/js/jquery-ui-1.8.13.custom.min.js");
 			wp_enqueue_script( 'datepicker-js');
@@ -170,6 +280,8 @@ class GMBookings {
 	
 	public function call_js() {
 		global $post;
+		if( !is_object( $post ) ) return;
+		
 		if($post->post_type == 'gm_bookings'){
 			echo "<script>
 jQuery(document).ready(function() {
