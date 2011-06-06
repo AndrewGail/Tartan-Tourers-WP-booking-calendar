@@ -1,0 +1,4 @@
+#gm_booking_form label { display: block; float: left; width: 15em; }
+#gm_booking_form input { display: block; float: left; }
+#gm_booking_form textarea { width: 30em; }
+#gm_booking_form p { clear: both; }
