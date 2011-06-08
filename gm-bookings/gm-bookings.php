@@ -14,8 +14,7 @@ class GMBookings {
 	var $plugin_dir;
 	var $plugin_url;
 
-    public function __construct()
-    {
+    public function __construct() {
 		$this->plugin_dir = WP_PLUGIN_DIR . "/gm-bookings";
 		$this->plugin_url = WP_PLUGIN_URL . "/gm-bookings";
 
@@ -109,23 +108,31 @@ class GMBookings {
 
 	function custom_columns( $column ) {
 		global $post;
-		$custom = get_post_custom();
+		setlocale(LC_ALL, 'en_GB'); // Forcing dates to british
+		$custom = get_post_meta( $post->ID, 'gm_booking_meta', true );
+		
+		if( strlen( $custom ) < 1 ) {
+			return;
+		} else {
+			$custom = unserialize( $custom );
+		}
 		
 		switch ( $column ) {
 			case "gm_bookings_customer":
-				echo $custom['gm_bookings_first_name'][0] . ' ' . $custom['gm_bookings_last_name'][0];
+				$cust_name = $custom['gm_bookings_first_name'] . ' ' . $custom['gm_bookings_last_name'];
+				echo '<strong><a class="row-title" title="Edit booking for “' . $cust_name . '”" href="' . get_admin_url() . 'post.php?post=' . $post->ID . '&action=edit&post_type=gm_bookings">' . $cust_name . '</strong>';
 				break;
 			case "gm_bookings_date":
-				echo $custom["gm_bookings_start_date"][0];
+				echo $custom["gm_bookings_start_date"];
 				break;
 			case "gm_bookings_duration":
-				$end_date = strtotime(str_replace('/', '-', $custom["gm_bookings_end_date"][0]));
-				$start_date = strtotime(str_replace('/', '-', $custom["gm_bookings_start_date"][0]));
-				$daycount = round(abs($end-$start)/60/60/24);
-				echo round(abs($end_date-$start_date)/60/60/24) . ' days';
+				$end_date = strtotime(str_replace('/', '-', $custom["gm_bookings_end_date"]));
+				$start_date = strtotime(str_replace('/', '-', $custom["gm_bookings_start_date"]));
+				//$daycount = round(abs($end_date-$start_date)/60/60/24);
+				echo round(abs($end_date-$start_date)/60/60/24)+1 . ' days';
 				break;
 			case "gm_bookings_charge":
-				echo '&pound;' . $custom["gm_bookings_charge"][0];
+				echo '&pound;' . $custom["gm_bookings_charge"];
 				break;
 			case "gm_bookings_van":
 				$vans = get_the_terms(0, "gm_vans");
@@ -151,6 +158,13 @@ class GMBookings {
 	public function meta_box_options() {
 		global $post;
 		wp_nonce_field( plugin_basename( __FILE__ ), 'gm_bookings_noncename' );
+		$custom = get_post_meta( $post->ID, 'gm_booking_meta', true );
+		
+		if( strlen( $custom ) < 1 ) {
+			$custom = array();
+		} else {
+			$custom = unserialize( $custom );
+		}
 		
 		echo '<div id="gm_booking_form">';
 		
@@ -158,69 +172,69 @@ class GMBookings {
 		echo '<h2>Customer details</h2>';
 		
 		echo '<p><label for="gm_bookings_first_name">First Name:</label>';
-		echo '<input type="text" id="gm_bookings_first_name" name="gm_bookings_first_name" value="' . get_post_meta($post->ID, 'gm_bookings_first_name', TRUE) . '" size="30" /></p>';
+		echo '<input type="text" id="gm_bookings_first_name" name="gm_bookings_first_name" value="'; if( array_key_exists( 'gm_bookings_first_name', $custom ) ) echo $custom['gm_bookings_first_name']; echo '" size="30" /></p>';
 		
 		echo '<p><label for="gm_bookings_last_name">Last Name:</label>';
-		echo '<input type="text" id="gm_bookings_last_name" name="gm_bookings_last_name" value="' . get_post_meta($post->ID, 'gm_bookings_last_name', TRUE) . '" size="30" /></p>';
+		echo '<input type="text" id="gm_bookings_last_name" name="gm_bookings_last_name" value="'; if( array_key_exists( 'gm_bookings_last_name', $custom ) ) echo $custom['gm_bookings_last_name']; echo '" size="30" /></p>';
 		
 		echo '<p><label for="gm_bookings_dob">Date of birth:</label>';
-		echo '<input type="text" id="gm_bookings_dob" name="gm_bookings_dob" value="' . get_post_meta($post->ID, 'gm_bookings_dob', TRUE) . '" size="20" /></p>';
+		echo '<input type="text" id="gm_bookings_dob" name="gm_bookings_dob" value="'; if( array_key_exists( 'gm_bookings_dob', $custom ) ) echo $custom['gm_bookings_dob']; echo '" size="20" /></p>';
 		
 		echo '<p><label for="gm_bookings_job">Occupation:</label>';
-		echo '<input type="text" id="gm_bookings_job" name="gm_bookings_job" value="' . get_post_meta($post->ID, 'gm_bookings_job', TRUE) . '" size="30" /></p>';
+		echo '<input type="text" id="gm_bookings_job" name="gm_bookings_job" value="'; if( array_key_exists( 'gm_bookings_job', $custom ) ) echo $custom['gm_bookings_job']; echo '" size="30" /></p>';
 		
 		// Address
 		echo '<h2>Customer address</h2>';
 		
 		echo '<p><label for="gm_bookings_addr">Address:</label><br/>';
-		echo '<textarea id="gm_bookings_addr" name="gm_bookings_addr" value="" cols="60" rows="7">' . get_post_meta($post->ID, 'gm_bookings_addr', TRUE) . '</textarea></p>';
+		echo '<textarea id="gm_bookings_addr" name="gm_bookings_addr" value="" cols="60" rows="7">'; if( array_key_exists( 'gm_bookings_addr', $custom ) ) echo $custom['gm_bookings_addr']; echo '</textarea></p>';
 		
 		// Contact details
 		echo '<h2>Contact details</h2>';
 		
 		echo '<p><label for="gm_bookings_teld">Daytime telephone:</label>';
-		echo '<input type="text" id="gm_bookings_teld" name="gm_bookings_teld" value="' . get_post_meta($post->ID, 'gm_bookings_teld', TRUE) . '" size="20" /></p>';
+		echo '<input type="text" id="gm_bookings_teld" name="gm_bookings_teld" value="'; if( array_key_exists( 'gm_bookings_teld', $custom ) ) echo $custom['gm_bookings_teld']; echo '" size="20" /></p>';
 		
 		echo '<p><label for="gm_bookings_tele">Evening telephone:</label>';
-		echo '<input type="text" id="gm_bookings_tele" name="gm_bookings_tele" value="' . get_post_meta($post->ID, 'gm_bookings_tele', TRUE) . '" size="20" /></p>';
+		echo '<input type="text" id="gm_bookings_tele" name="gm_bookings_tele" value="'; if( array_key_exists( 'gm_bookings_tele', $custom ) ) echo $custom['gm_bookings_tele']; echo '" size="20" /></p>';
 		
 		echo '<p><label for="gm_bookings_mob">Mobile:</label>';
-		echo '<input type="text" id="gm_bookings_mob" name="gm_bookings_mob" value="' . get_post_meta($post->ID, 'gm_bookings_mob', TRUE) . '" size="20" /></p>';
+		echo '<input type="text" id="gm_bookings_mob" name="gm_bookings_mob" value="'; if( array_key_exists( 'gm_bookings_mob', $custom ) ) echo $custom['gm_bookings_mob']; echo '" size="20" /></p>';
 		
 		echo '<p><label for="gm_bookings_fax">Fax:</label>';
-		echo '<input type="text" id="gm_bookings_fax" name="gm_bookings_fax" value="' . get_post_meta($post->ID, 'gm_bookings_fax', TRUE) . '" size="20" /></p>';
+		echo '<input type="text" id="gm_bookings_fax" name="gm_bookings_fax" value="'; if( array_key_exists( 'gm_bookings_fax', $custom ) ) echo $custom['gm_bookings_fax']; echo '" size="20" /></p>';
 		
 		echo '<p><label for="gm_bookings_email">Email:</label>';
-		echo '<input type="text" id="gm_bookings_email" name="gm_bookings_email" value="' . get_post_meta($post->ID, 'gm_bookings_email', TRUE) . '" size="20" /></p>';
+		echo '<input type="text" id="gm_bookings_email" name="gm_bookings_email" value="'; if( array_key_exists( 'gm_bookings_email', $custom ) ) echo $custom['gm_bookings_email']; echo '" size="20" /></p>';
 
 		// Hire details
 		echo '<h2>Hire details</h2>';
 		
 		echo '<p><label for="gm_bookings_charge">Charge (&pound;):</label>';
-		echo '<input type="text" id="gm_bookings_charge" name="gm_bookings_charge" value="' . get_post_meta($post->ID, 'gm_bookings_charge', TRUE) . '" size="10" /></p>';
+		echo '<input type="text" id="gm_bookings_charge" name="gm_bookings_charge" value="'; if( array_key_exists( 'gm_bookings_charge', $custom ) ) echo $custom['gm_bookings_charge']; echo '" size="10" /></p>';
 		
 		echo '<p><label for="gm_bookings_start_date">Hire start date:</label>';
-		echo '<input type="text" id="gm_bookings_start_date" name="gm_bookings_start_date" value="' . get_post_meta($post->ID, 'gm_bookings_start_date', TRUE) . '" size="20" /></p>';
+		echo '<input type="text" id="gm_bookings_start_date" name="gm_bookings_start_date" value="'; if( array_key_exists( 'gm_bookings_start_date', $custom ) ) echo $custom['gm_bookings_start_date']; echo '" size="20" /></p>';
 		
 		echo '<p><label for="gm_bookings_end_date">Hire end date:</label>';
-		echo '<input type="text" id="gm_bookings_end_date" name="gm_bookings_end_date" value="' . get_post_meta($post->ID, 'gm_bookings_end_date', TRUE) . '" size="20" /></p>';
+		echo '<input type="text" id="gm_bookings_end_date" name="gm_bookings_end_date" value="'; if( array_key_exists( 'gm_bookings_end_date', $custom ) ) echo $custom['gm_bookings_end_date']; echo '" size="20" /></p>';
 		
 		echo '<p><label for="gm_bookings_num_adults">Number of adults:</label>';
-		echo '<input type="text" id="gm_bookings_num_adults" name="gm_bookings_num_adults" value="' . get_post_meta($post->ID, 'gm_bookings_num_adults', TRUE) . '" size="10" /></p>';
+		echo '<input type="text" id="gm_bookings_num_adults" name="gm_bookings_num_adults" value="'; if( array_key_exists( 'gm_bookings_num_adults', $custom ) ) echo $custom['gm_bookings_num_adults']; echo '" size="10" /></p>';
 		
 		echo '<p><label for="gm_bookings_num_child">Number of children:</label>';
-		echo '<input type="text" id="gm_bookings_num_child" name="gm_bookings_num_child" value="' . get_post_meta($post->ID, 'gm_bookings_num_child', TRUE) . '" size="10" /></p>';
+		echo '<input type="text" id="gm_bookings_num_child" name="gm_bookings_num_child" value="'; if( array_key_exists( 'gm_bookings_num_child', $custom ) ) echo $custom['gm_bookings_num_child']; echo '" size="10" /></p>';
 		
 		// Notes
 		echo '<h2>Notes</h2>';
 		
 		echo '<p><label for="gm_bookings_note">Any other information:</label><br/>';
-		echo '<textarea id="gm_bookings_note" name="gm_bookings_note" value="" cols="60" rows="7">' . get_post_meta($post->ID, 'gm_bookings_note', TRUE) . '</textarea></p>';
+		echo '<textarea id="gm_bookings_note" name="gm_bookings_note" value="" cols="60" rows="7">'; if( array_key_exists( 'gm_bookings_note', $custom ) ) echo $custom['gm_bookings_note']; echo '</textarea></p>';
 		
 		echo '</div>';
 	}
     
-	public function save_meta_box() {
+	public function save_meta_box( $post_ID ) {
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) 
 		return;
 		if ( !isset( $_POST['gm_bookings_noncename'] ) ) {
@@ -241,13 +255,45 @@ class GMBookings {
 		}
 
 		// OK, we're authenticated: we need to find and save the data
-		$gm_start_date = $_POST['gm_bookings_start_date'];
+		$meta_array = array(
+			'gm_bookings_first_name' => '',
+			'gm_bookings_last_name' => '',
+			'gm_bookings_dob' => '',
+			'gm_bookings_job' => '',
+			'gm_bookings_addr' => '',
+			'gm_bookings_teld' => '',
+			'gm_bookings_tele' => '',
+			'gm_bookings_mob' => '',
+			'gm_bookings_fax' => '',
+			'gm_bookings_email' => '',
+			'gm_bookings_charge' => '',
+			'gm_bookings_start_date' => '',
+			'gm_bookings_end_date' => '',
+			'gm_bookings_num_adults' => '',
+			'gm_bookings_num_child' => '',
+			'gm_bookings_note' => ''
+		);
+		
+		if( array_key_exists( 'gm_bookings_first_name', $_POST ) ) $meta_array['gm_bookings_first_name'] = $_POST['gm_bookings_first_name'];
+		if( array_key_exists( 'gm_bookings_last_name', $_POST ) ) $meta_array['gm_bookings_last_name'] = $_POST['gm_bookings_last_name'];
+		if( array_key_exists( 'gm_bookings_dob', $_POST ) ) $meta_array['gm_bookings_dob'] = $_POST['gm_bookings_dob'];
+		if( array_key_exists( 'gm_bookings_job', $_POST ) ) $meta_array['gm_bookings_job'] = $_POST['gm_bookings_job'];
+		if( array_key_exists( 'gm_bookings_addr', $_POST ) ) $meta_array['gm_bookings_addr'] = $_POST['gm_bookings_addr'];
+		if( array_key_exists( 'gm_bookings_teld', $_POST ) ) $meta_array['gm_bookings_teld'] = $_POST['gm_bookings_teld'];
+		if( array_key_exists( 'gm_bookings_tele', $_POST ) ) $meta_array['gm_bookings_tele'] = $_POST['gm_bookings_tele'];
+		if( array_key_exists( 'gm_bookings_mob', $_POST ) ) $meta_array['gm_bookings_mob'] = $_POST['gm_bookings_mob'];
+		if( array_key_exists( 'gm_bookings_fax', $_POST ) ) $meta_array['gm_bookings_fax'] = $_POST['gm_bookings_fax'];
+		if( array_key_exists( 'gm_bookings_email', $_POST ) ) $meta_array['gm_bookings_email'] = $_POST['gm_bookings_email'];
+		if( array_key_exists( 'gm_bookings_charge', $_POST ) ) $meta_array['gm_bookings_charge'] = $_POST['gm_bookings_charge'];
+		if( array_key_exists( 'gm_bookings_start_date', $_POST ) ) $meta_array['gm_bookings_start_date'] = $_POST['gm_bookings_start_date'];
+		if( array_key_exists( 'gm_bookings_end_date', $_POST ) ) $meta_array['gm_bookings_end_date'] = $_POST['gm_bookings_end_date'];
+		if( array_key_exists( 'gm_bookings_num_adults', $_POST ) ) $meta_array['gm_bookings_num_adults'] = $_POST['gm_bookings_num_adults'];
+		if( array_key_exists( 'gm_bookings_num_child', $_POST ) ) $meta_array['gm_bookings_num_child'] = $_POST['gm_bookings_num_child'];
+		if( array_key_exists( 'gm_bookings_note', $_POST ) ) $meta_array['gm_bookings_note'] = $_POST['gm_bookings_note'];
+		
+		update_post_meta( $post_ID, 'gm_booking_meta', serialize( $meta_array ) );
 
-		// Do something with $gm_start_date 
-		// probably using add_post_meta(), update_post_meta(), or 
-		// a custom table (see Further Reading section below)
-
-		return $mydata;
+		return $post_ID;
 	}
 	
 	public function add_stylesheets() {
