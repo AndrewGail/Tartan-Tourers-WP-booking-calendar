@@ -27,8 +27,10 @@ class GMBookings {
         add_action( 'add_meta_boxes', array( &$this, 'create_meta_box' ) );
         add_action( 'save_post', array( &$this, 'save_meta_box' ) );
 		
-		add_filter("manage_edit-gm_bookings_columns", array(&$this, "edit_columns"));
-		add_action("manage_posts_custom_column", array(&$this, "custom_columns"));
+		add_filter( "manage_edit-gm_bookings_columns", array(&$this, "edit_columns") );
+		add_action( "manage_posts_custom_column", array(&$this, "custom_columns") );
+		
+		add_shortcode( 'gm-calendar', array(&$this, "draw_calendar") );
     }
     
     public function create_van_taxonomy() {
@@ -120,7 +122,7 @@ class GMBookings {
 		switch ( $column ) {
 			case "gm_bookings_customer":
 				$cust_name = $custom['gm_bookings_first_name'] . ' ' . $custom['gm_bookings_last_name'];
-				echo '<strong><a class="row-title" title="Edit booking for “' . $cust_name . '”" href="' . get_admin_url() . 'post.php?post=' . $post->ID . '&action=edit&post_type=gm_bookings">' . $cust_name . '</strong>';
+				echo '<strong><a class="row-title" title="Edit booking for &quot;' . $cust_name . '&quot;" href="' . get_admin_url() . 'post.php?post=' . $post->ID . '&action=edit&post_type=gm_bookings">' . $cust_name . '</strong>';
 				break;
 			case "gm_bookings_date":
 				echo $custom["gm_bookings_start_date"];
@@ -296,6 +298,109 @@ class GMBookings {
 		return $post_ID;
 	}
 	
+	public function draw_calendar() {
+		$output = '';
+	
+		$output .= '<table id="availabilitycalendar" border="0" cellspacing="0" cellpadding="0">'."\n";
+		$output .= '<caption>Tartan Tourers availability calendar 2011</caption>'."\n";
+		$output .= '<colgroup>'."\n";
+		$output .= '<col class="availabilitycalendarh"></col>'."\n";
+		$output .= '<col class="availabilitycalendar0"></col>'."\n";
+		$output .= '<col class="availabilitycalendar1"></col>'."\n";
+		$output .= '<col class="availabilitycalendar2"></col>'."\n";
+		$output .= '<col class="availabilitycalendar3"></col>'."\n";
+		$output .= '<col class="availabilitycalendar4"></col>'."\n";
+		$output .= '<col class="availabilitycalendar5"></col>'."\n";
+		$output .= '<col class="availabilitycalendar6"></col>'."\n";
+		$output .= '<col class="availabilitycalendar7"></col>'."\n";
+		$output .= '<col class="availabilitycalendar8"></col>'."\n";
+		$output .= '<col class="availabilitycalendar9"></col>'."\n";
+		$output .= '<col class="availabilitycalendar10"></col>'."\n";
+		$output .= '<col class="availabilitycalendar11"></col>'."\n";
+		$output .= '</colgroup>'."\n";
+		$output .= '<thead>'."\n";
+		$output .= '<tr>'."\n";
+		$output .= '<th></th>'."\n";
+		$output .= '<th>Jan</th>'."\n";
+		$output .= '<th>Feb</th>'."\n";
+		$output .= '<th>Mar</th>'."\n";
+		$output .= '<th>Apr</th>'."\n";
+		$output .= '<th>May</th>'."\n";
+		$output .= '<th>Jun</th>'."\n";
+		$output .= '<th>Jul</th>'."\n";
+		$output .= '<th>Aug</th>'."\n";
+		$output .= '<th>Sep</th>'."\n";
+		$output .= '<th>Oct</th>'."\n";
+		$output .= '<th>Nov</th>'."\n";
+		$output .= '<th>Dec</th>'."\n";
+		$output .= '</tr>'."\n";
+		$output .= '</thead>'."\n";
+		$output .= '<tfoot>'."\n";
+		$output .= '<tr>'."\n";
+		$output .= '<th></th>'."\n";
+		$output .= '<td>Jan</td>'."\n";
+		$output .= '<td>Feb</td>'."\n";
+		$output .= '<td>Mar</td>'."\n";
+		$output .= '<td>Apr</td>'."\n";
+		$output .= '<td>May</td>'."\n";
+		$output .= '<td>Jun</td>'."\n";
+		$output .= '<td>Jul</td>'."\n";
+		$output .= '<td>Aug</td>'."\n";
+		$output .= '<td>Sep</td>'."\n";
+		$output .= '<td>Oct</td>'."\n";
+		$output .= '<td>Nov</td>'."\n";
+		$output .= '<td>Dec</td>'."\n";
+		$output .= '</tr>'."\n";
+		$output .= '</tfoot>'."\n";
+		$output .= '<tbody>'."\n";
+		
+		// I'm just working with one Van for a proof of concept.
+		$bookings = get_posts( array( 'post_type' => 'gm_bookings' ) );
+		$this_year = '2011';
+		$i = 1;
+		while ( $i < 32 ) {
+			$output .= '<tr>'."\n";
+			$output .= '<th>'.str_pad( $i, 2, '0', STR_PAD_LEFT ).'</th>'."\n";
+			
+			$j = 1;
+			if( $bookings ) {
+				while ( $j < 13 ) {
+					foreach( $bookings as $booking ) {
+						$custom = get_post_meta( $booking->ID, 'gm_booking_meta', true );
+						if( strlen( $custom ) < 1 ) { $custom = array(); } else { $custom = unserialize( $custom ); }
+						
+						$start_date = '01-01-2000';
+						$end_date = '02-01-2000';
+						$this_date = str_pad( $i, 2, '0', STR_PAD_LEFT ) . '-' . str_pad( $j, 2, '0', STR_PAD_LEFT ) . '-' . $this_year;
+						
+						if( array_key_exists( 'gm_bookings_start_date', $custom ) ) $start_date = str_replace('/', '-', $custom["gm_bookings_start_date"]);
+						if( array_key_exists( 'gm_bookings_end_date', $custom ) ) $end_date = str_replace('/', '-', $custom["gm_bookings_end_date"]);
+						
+						if( $this->check_date( $start_date, $end_date, $this_date ) ) {
+							$output .= '<td class="v1v0" title="Van one: booked Van two: available"><span>Van one: booked<br/>Van two: available</span></td>'."\n";
+						} else {
+							$output .= '<td class="v0v0" title="Van one: available Van two: available"><span>Van one: available<br/>Van two: available</span></td>'."\n";
+						}
+					}
+					$j++;
+				}
+			} else {
+				while ( $j < 13 ) {
+					$output .= '<td class="v0v0"><span>Van one: available<br/>Van two: available</span></td>'."\n";
+					$j++;
+				}
+			}
+			
+			$output .= '</tr>'."\n";
+			$i++;
+		}
+		
+		$output .= '</tbody>'."\n";
+		$output .= '</table>'."\n";
+		
+		return $output;
+	}
+	
 	public function add_stylesheets() {
 		global $post;
 		if( !is_object( $post ) ) return;
@@ -336,6 +441,11 @@ jQuery(document).ready(function() {
 });
 </script>";
 		}
+	}
+
+	private function check_date( $start_date, $end_date, $check_date ) {
+		// Check whether given date is between start & end
+		return ( ( strtotime($check_date) >= strtotime($start_date) ) && ( strtotime($check_date) <= strtotime($end_date) ) );
 	}
 }
 
